@@ -30,8 +30,6 @@ public class HbaseMoveUtil {
 		AppConfig.loadenv(env);
 		Connection conn = HbaseConn.getInstance();
 		Admin admin = conn.getAdmin();
-		//http://hadoop-134-84-69-7.anhui.chinatelecom.com:60010/jmx?qry=Hadoop:service=HBase,name=Master,sub=Server
-		
 		Collection<ServerName> regionservers = admin.getClusterStatus().getServers();
 		for(ServerName rsQname : regionservers){
 		    log.info("rsQname:{}", rsQname);

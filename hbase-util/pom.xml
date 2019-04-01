@@ -5,10 +5,10 @@
 	<artifactId>hbase-util</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<distributionManagement>
-	    <repository>
-	      <id>hx</id>
-	      <url>ftp://134.64.105.155/rhao/software/bigdata</url>
-	    </repository>	
+		<repository>
+			<id>hx</id>
+			<url>ftp://134.64.105.155/rhao/software/bigdata</url>
+		</repository>
 	</distributionManagement>
 	<repositories>
 		<repository>
@@ -58,5 +58,15 @@
 				<artifactId>wagon-ftp</artifactId>
 			</extension>
 		</extensions>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<source>1.8</source>
+					<target>1.8</target>
+				</configuration>
+			</plugin>
+		</plugins>
 	</build>
 </project>

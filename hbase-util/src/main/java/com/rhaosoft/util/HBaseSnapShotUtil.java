@@ -2,7 +2,6 @@ package com.rhaosoft.util;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -33,11 +32,16 @@ public class HBaseSnapShotUtil {
 	
 	private static Integer THREAD_POOL_SIZE = 5;
 	
-	static {
-		// 按行读取文件
+	/**
+	 * 从配置文件加载表清单
+	 */
+	public static void loadTable(String tableTemplate) {
 		try {
+			//根据模板生成每日待处理的表清单
+			FileUtil.genTableList(tableTemplate);
 			log.info("read tablelist from current dir!");
-			FileInputStream inputStream = new FileInputStream("./tablelist");
+			String tableList = tableTemplate.replace(".tmpl", ".table") ;
+			FileInputStream inputStream = new FileInputStream(tableList);
 			BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
 			String str = null;
 			while ((str = bufferedReader.readLine()) != null) {
@@ -51,10 +55,12 @@ public class HBaseSnapShotUtil {
 	
 	public static void main(String[] args) throws Exception {
 		String env = args[0]; 
-		if(args.length==2) {
-			THREAD_POOL_SIZE = Integer.parseInt(args[1]);
+		String templateFilePath = args[1];
+		//加载待做快照、恢复快照的表清单
+		loadTable(templateFilePath);
+		if(args.length==3) {
+			THREAD_POOL_SIZE = Integer.parseInt(args[2]);
 		}
-		log.info("env:{}", env);
 		if (env.equalsIgnoreCase("snapshot")) {
 			AppConfig.loadenv("prod");
 			cluster = "prod";
@@ -126,11 +132,24 @@ public class HBaseSnapShotUtil {
 		}
 	}
 	
+	public static void refreshKeytab() {
+		String command = String.format("kinit -kt %s %s", AppConfig.KEYTAB_LOCATE, AppConfig.PRINCIPAL);
+		log.info("刷新票据的命令:" + command);		
+		Integer result = CommandUtil.callShell(command);
+		if (result == 0) {
+			log.info("refresh keytab success!");
+		} else {
+			log.info("refresh keytab failed!");
+		}
+	}
+	
 	/**
 	 * 导出快照到备份集群
 	 * @param tablename
 	 */
 	public static void exportSnapshotByCommand(TableName tablename) {
+		//命令行导出快照前，需要刷新票据
+		refreshKeytab();
 		String snapshot = tablename.getNameAsString().replaceAll(":", "-") + "-snapshot";
 		log.info("export snapshot:" + snapshot + " to " + cluster);
 		StringBuffer sb =  new StringBuffer();
@@ -239,33 +258,6 @@ public class HBaseSnapShotUtil {
 		} catch (IOException e) {
 			log.error("获取HBaseAdmin失败，程序退出！");
 			System.exit(-1);
-		}
-		//读取表清单
-		List<TableName> tableNames = new ArrayList<TableName>();
-		//按行读取文件
-		FileInputStream inputStream = null;
-		try {
-			inputStream = new FileInputStream("./tablelist");
-		} catch (FileNotFoundException e) {
-			log.error("tablelist文件不存在，程序退出!");
-			System.exit(-2);
-		}
-		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-		String str = null;
-		try {
-			while((str = bufferedReader.readLine()) != null){
-				tableNames.add(TableName.valueOf(str.getBytes()));
-			}
-		} catch (IllegalArgumentException | IOException e) {
-			log.error("读取tablelist文件失败，程序退出!");
-			System.exit(-3);
-		} finally {
-			try {
-				bufferedReader.close();
-				inputStream.close();
-			} catch (IOException e) {
-				log.error(e.getMessage());
-			}
 		}
 		List<SnapshotDescription> snapshots = new ArrayList<SnapshotDescription>();
 		try {
